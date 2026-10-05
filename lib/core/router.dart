@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/login_screen.dart';
+import '../screens/auth/register_screen.dart';
 import '../screens/dashboard/dashboard_screen.dart';
 import '../screens/approvals/approvals_screen.dart';
 import '../screens/approvals/expense_detail_screen.dart';
@@ -19,6 +20,7 @@ class Routes {
   static const splash = '/';
   static const login = '/login';
   static const forgotPassword = '/forgot-password';
+  static const register = '/register';
   static const dashboard = '/dashboard';
   static const employees = '/employees';
   static const attendance = '/attendance';
@@ -42,7 +44,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (auth.isLoading) return loc == Routes.splash ? null : Routes.splash;
 
       final loggedIn = auth.value != null;
-      final onPublic = loc == Routes.login || loc == Routes.forgotPassword;
+      final onPublic = loc == Routes.login ||
+          loc == Routes.forgotPassword ||
+          loc == Routes.register;
 
       if (!loggedIn) return onPublic ? null : Routes.login;
       if (onPublic || loc == Routes.splash) return Routes.dashboard;
@@ -54,6 +58,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.forgotPassword,
         builder: (_, _) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: Routes.register,
+        builder: (_, _) => const RegisterScreen(),
       ),
       GoRoute(
         path: Routes.settings,
