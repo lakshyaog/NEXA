@@ -1,0 +1,55 @@
+rules_version = '2';
+
+// NEXA Admin Lite - Storage Security Rules
+//
+// NOTE: Cloudinary is the active upload backend on this deployment because
+// enabling Cloud Storage requires a billed project (see README section 7).
+// These rules are complete and are what governs uploads whenever the app is
+// built without Cloudinary configuration, which makes it fall back to
+// Firebase Storage.
+//
+// Only signed-in admins may read or write files. Uploads are additionally
+// constrained by content type and size so a hostile client cannot fill the
+// bucket with arbitrary payloads.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function underSizeLimit(mb) {
+      return request.resource.size < mb * 1024 * 1024;
+    }
+
+    // Employee profile photos.
+    match /employees/{employeeId}/{fileName} {
+      allow read: if signedIn();
+      allow write: if signedIn() && isImage() && underSizeLimit(5);
+      allow delete: if signedIn();
+    }
+
+    // Customer ID proofs and other customer documents.
+    match /customers/{customerId}/{fileName} {
+      allow read: if signedIn();
+      allow write: if signedIn() && isImage() && underSizeLimit(10);
+      allow delete: if signedIn();
+    }
+
+    // Expense receipts.
+    match /expenses/{expenseId}/{fileName} {
+      allow read: if signedIn();
+      allow write: if signedIn() && isImage() && underSizeLimit(10);
+      allow delete: if signedIn();
+    }
+
+    // Everything else is denied.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

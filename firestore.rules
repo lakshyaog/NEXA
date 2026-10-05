@@ -1,0 +1,62 @@
+rules_version = '2';
+
+// NEXA Admin Lite - Firestore Security Rules
+//
+// Model: a single Admin role. Every document under this project is business
+// data that only a signed-in admin may touch. Admin identity is proven by a
+// document in /users/{uid} with role == "admin", not by the client UI.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- helpers -------------------------------------------------------
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ---- users ---------------------------------------------------------
+    // A signed-in user may read and create only their own profile document,
+    // so first login can self-register. The role field is pinned to "admin"
+    // here because this build is admin-only; it cannot be escalated later.
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn()
+                    && request.auth.uid == uid
+                    && request.resource.data.role == 'admin';
+      allow update: if signedIn()
+                    && request.auth.uid == uid
+                    && request.resource.data.role == resource.data.role;
+      allow delete: if false;
+    }
+
+    // ---- business collections -------------------------------------------
+    match /employees/{id}   { allow read, write: if isAdmin(); }
+    match /branches/{id}    { allow read, write: if isAdmin(); }
+    match /attendance/{id}  { allow read, write: if isAdmin(); }
+    match /customers/{id}   { allow read, write: if isAdmin(); }
+    match /documents/{id}   { allow read, write: if isAdmin(); }
+    match /expenses/{id}    { allow read, write: if isAdmin(); }
+    match /collections/{id} { allow read, write: if isAdmin(); }
+    match /notifications/{id} { allow read, write: if isAdmin(); }
+
+    // ---- audit log -------------------------------------------------------
+    // Append-only: an admin may read and add entries but never rewrite or
+    // erase history, so the log stays trustworthy as evidence.
+    match /audit_logs/{id} {
+      allow read:   if isAdmin();
+      allow create: if isAdmin()
+                    && request.resource.data.adminId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Anything not matched above is denied by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
