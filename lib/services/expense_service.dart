@@ -30,7 +30,12 @@ class ExpenseService {
         ..sort((a, b) => (b.createdAt ?? DateTime(0))
             .compareTo(a.createdAt ?? DateTime(0))));
 
+  /// Reserves a document id so a receipt can be uploaded to
+  /// `expenses/{id}/` before the expense record itself exists.
+  String newId() => _col.doc().id;
+
   Future<String> create({
+    String? id,
     required String employeeId,
     required String employeeName,
     required double amount,
@@ -38,7 +43,8 @@ class ExpenseService {
     required String description,
     String? receiptUrl,
   }) async {
-    final ref = await _col.add({
+    final ref = id == null ? _col.doc() : _col.doc(id);
+    await ref.set({
       'employeeId': employeeId,
       'employeeName': employeeName,
       'amount': amount,

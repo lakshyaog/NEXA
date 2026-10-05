@@ -16,9 +16,16 @@ class EmployeeService {
       .snapshots()
       .map((s) => s.docs.map(Employee.fromDoc).toList());
 
-  Future<String> create(Employee e) async {
-    final ref = await _col.add(e.toMap()
-      ..['createdAt'] = FieldValue.serverTimestamp());
+  /// Reserves a document id without writing anything.
+  ///
+  /// Lets a profile photo be uploaded to `employees/{id}/` before the record
+  /// exists, so the stored file always sits under the id it belongs to rather
+  /// than a placeholder that never matches.
+  String newId() => _col.doc().id;
+
+  Future<String> create(Employee e, {String? id}) async {
+    final ref = id == null ? _col.doc() : _col.doc(id);
+    await ref.set(e.toMap()..['createdAt'] = FieldValue.serverTimestamp());
     await _audit.log(
       action: 'employee_created',
       entity: 'employees/${ref.id}',

@@ -61,12 +61,17 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
       _error = null;
     });
 
+    final service = ref.read(expenseServiceProvider);
+    // Reserve the id first so the receipt is filed under the expense it
+    // belongs to, which is what the storage rules are scoped around.
+    final expenseId = service.newId();
+
     try {
       String? receiptUrl;
       if (_receipt != null) {
         final name = 'receipt_${DateTime.now().millisecondsSinceEpoch}.jpg';
         receiptUrl = await ref.read(fileStorageProvider).upload(
-              path: 'expenses/${_employee!.id}/$name',
+              path: 'expenses/$expenseId/$name',
               file: _receipt!,
               onProgress: (p) {
                 if (mounted) setState(() => _progress = p);
@@ -75,7 +80,8 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
       }
 
       final amount = double.parse(_amount.text.trim());
-      final expenseId = await ref.read(expenseServiceProvider).create(
+      await service.create(
+            id: expenseId,
             employeeId: _employee!.id,
             employeeName: _employee!.name,
             amount: amount,

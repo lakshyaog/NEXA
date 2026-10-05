@@ -91,13 +91,16 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
       _uploadProgress = null;
     });
 
+    final service = ref.read(employeeServiceProvider);
+    // Reserve the id up front so a photo uploaded for a brand new employee
+    // lands under the same id the record will be created with.
+    final employeeId = widget.employee?.id ?? service.newId();
+
     try {
       String? photoUrl = _existingPhotoUrl;
       if (_pickedPhoto != null) {
-        final empId = widget.employee?.id ??
-            DateTime.now().microsecondsSinceEpoch.toString();
         photoUrl = await ref.read(fileStorageProvider).upload(
-              path: 'employees/$empId/profile.jpg',
+              path: 'employees/$employeeId/profile.jpg',
               file: _pickedPhoto!,
               onProgress: (p) {
                 if (mounted) setState(() => _uploadProgress = p);
@@ -106,7 +109,7 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
       }
 
       final employee = Employee(
-        id: widget.employee?.id ?? '',
+        id: employeeId,
         name: _name.text.trim(),
         mobile: _mobile.text.trim(),
         email: _email.text.trim(),
@@ -117,11 +120,10 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
         photoUrl: photoUrl,
       );
 
-      final service = ref.read(employeeServiceProvider);
       if (widget.isEdit) {
         await service.update(widget.employee!.id, employee);
       } else {
-        await service.create(employee);
+        await service.create(employee, id: employeeId);
       }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
