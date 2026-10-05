@@ -26,9 +26,15 @@ class OfflineBanner extends ConsumerWidget {
             children: [
               Icon(Icons.wifi_off, size: 16, color: Colors.white),
               SizedBox(width: 8),
-              Text(
-                'Offline - showing cached data. Changes will sync when online.',
-                style: TextStyle(color: Colors.white, fontSize: 12),
+              // Flexible so the message wraps on narrow screens instead of
+              // overflowing the row.
+              Flexible(
+                child: Text(
+                  'Offline - showing cached data. '
+                  'Changes will sync when online.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white, fontSize: 12),
+                ),
               ),
             ],
           ),

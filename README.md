@@ -12,7 +12,7 @@ manage the operational side of a small field business:
 
 | Module | What it does |
 | --- | --- |
-| Authentication | Email/password sign-in, forgot password, session persistence, route guard |
+| Authentication | Email/password sign-up and sign-in, forgot password, session persistence, route guard |
 | Dashboard | Live KPI tiles (employees, attendance, leads, approvals, collections) with pull-to-refresh |
 | Employees | List, search by name, filter by status, create/edit, activate/deactivate, profile photo |
 | Branches & Geofence | Create branches with latitude/longitude/radius, shown on a map with the geofence circle |
@@ -81,15 +81,27 @@ manage the operational side of a small field business:
 
 ### Cloudinary setup (upload backend)
 
+**No setup is required to run this project.** The evaluation account's cloud
+name and unsigned upload preset are the defaults in
+`lib/core/app_config.dart`, so a fresh clone uploads correctly out of the box.
+
+Both values are safe in source control: a cloud name is public, and an
+*unsigned* upload preset is designed to be embedded in client applications.
+Neither grants read access to the account and neither is an API secret — the
+signing key never reaches the client.
+
+To point the app at your own account instead:
+
 1. Create a free Cloudinary account.
-2. Open **Settings → Upload → Upload presets → Add upload preset**, and set
+2. Open **Settings → Upload → Upload presets → Add upload preset** and set
    **Signing mode** to **Unsigned**. Leave the asset folder blank, because the
    app supplies a folder per upload.
-3. Copy `dart_define.example.json` to `dart_define.json` and fill in your cloud
-   name and preset name. **`dart_define.json` is gitignored.**
+3. Copy `dart_define.example.json` to `dart_define.json`, fill in your values,
+   and build with `--dart-define-from-file=dart_define.json`.
+   **`dart_define.json` is gitignored.**
 
-If those values are absent, the app automatically falls back to Firebase
-Storage; no code change is needed.
+Passing empty strings for both makes the app fall back to Firebase Storage,
+which is governed by the committed `storage.rules`.
 
 ---
 
@@ -99,12 +111,15 @@ Storage; no code change is needed.
 flutter pub get
 
 # Run on a connected device
-flutter run --dart-define-from-file=dart_define.json
+flutter run
 
 # Release APK
-flutter build apk --release --dart-define-from-file=dart_define.json
+flutter build apk --release
 # Output: build/app/outputs/flutter-apk/app-release.apk
 ```
+
+Add `--dart-define-from-file=dart_define.json` to either command only when
+overriding the upload backend with your own Cloudinary account.
 
 ---
 
@@ -202,6 +217,23 @@ audit_logs/{id}
 
 ## 9. Security rules explained
 
+### Who can become an admin
+
+The app has a single Admin role, and the sign-up screen is open: anyone who
+registers receives a `/users/{uid}` document with `role: "admin"` and
+therefore full access. That is deliberate for an evaluation build, so the
+project can be installed and exercised without credentials being shared out
+of band.
+
+A production deployment would close this, by disabling self-registration and
+provisioning admins through the Firebase console or a privileged backend, or
+by requiring an invitation that the rules verify.
+
+What the rules *do* guarantee, regardless: a user may only create their own
+profile document, the role is pinned to `admin` at creation, and an update
+may not change the role field. So the open door is the sign-up screen itself,
+not a privilege-escalation path once an account exists.
+
 ### Firestore (`firestore.rules`)
 
 - **Admin identity is proved by data, not by the UI.** `isAdmin()` reads
@@ -274,6 +306,8 @@ than hand-rolled per screen.
 - **Firebase Storage is not the active upload backend.** Cloudinary is, for the
   billing reason in Section 7. `storage.rules` is written and committed but
   cannot be deployed until Storage is enabled on the project.
+- **Sign-up is open**, so anyone who registers becomes an admin. See
+  "Who can become an admin" above for why, and what production would do.
 - **Expenses are raised from inside the admin app.** In production they would
   come from an employee app, which is explicitly out of scope; the in-app form
   exists so the approval workflow can be exercised end to end.
